@@ -62,7 +62,7 @@ export default function HomePage() {
 
       if (user) {
         const tripSnapshot = await getDocs(
-          query(collection(db, "userTrips"), where("userId", "==", user.uid))
+          query(collection(db, "userTrips"), where("team", "array-contains", user.uid))
         );
         const cities = tripSnapshot.docs.map((doc) => doc.data().city);
         const uniqueCities = Array.from(new Set(cities)).filter(Boolean);
@@ -77,14 +77,14 @@ export default function HomePage() {
     if (!user) return;
 
     const fetchTripCities = async () => {
-      const tripQuery = query(collection(db, "userTrips"), where("userId", "==", user.uid));
+      const tripQuery = query(collection(db, "userTrips"), where("team", "array-contains", user.uid));
       const tripSnapshot = await getDocs(tripQuery);
       const cities = tripSnapshot.docs.map((doc) => doc.data().city);
       setTripCities(cities);
     };
 
     const fetchPins = async () => {
-      const q = query(collection(db, "itinerary"), where("userId", "==", user.uid));
+      const q = query(collection(db, "itinerary"), where("team", "array-contains", user.uid));
       const snapshot = await getDocs(q);
       const pins = snapshot.docs.map((doc) => {
         const data = doc.data();
@@ -99,7 +99,7 @@ export default function HomePage() {
         };
       });
 
-      
+
 
       setMarkers(pins);
       console.log("Loaded markers from Firestore:", pins);
@@ -138,6 +138,7 @@ export default function HomePage() {
       duration,
       city,
       userId: user.uid,
+      team: [user.uid],
       createdAt: serverTimestamp(),
     };
 
@@ -252,6 +253,12 @@ export default function HomePage() {
           </a>
         </div>
       )}
+      <a
+        href="/trips"
+        className="fixed bottom-4 right-4 btn btn-primary shadow-lg"
+      >
+        🗓️ Trips
+      </a>
     </main>
   );
 }
