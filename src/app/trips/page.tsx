@@ -46,7 +46,11 @@ export default function TripsPage() {
         const fetchTrips = async () => {
             if (!user) return;
 
-            const tripsQuery = query(collection(db, "userTrips"), where("userId", "==", user.uid));
+            const tripsQuery = query(
+                collection(db, "userTrips"),
+                where("userId", "==", user.uid),
+                where("team", "==", teamName)
+              );
             const tripSnapshot = await getDocs(tripsQuery);
             const trips = tripSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
             setSavedTrips(trips);
@@ -66,14 +70,19 @@ export default function TripsPage() {
             city,
             days,
             startDate,
+            team: teamName,
             userId: user.uid,
             createdAt: serverTimestamp(),
         });
         alert("Trip saved!");
-        const q = query(collection(db, "userTrips"), where("userId", "==", user.uid));
-        const snapshot = await getDocs(q);
-        const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-        setSavedTrips(data);
+        const q = query(
+            collection(db, "userTrips"),
+            where("userId", "==", user.uid),
+            where("team", "==", teamName)
+          );
+          const snapshot = await getDocs(q);
+          const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+          setSavedTrips(data);
     };
 
     const deleteTrip = async (id: string) => {

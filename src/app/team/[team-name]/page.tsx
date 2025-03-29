@@ -36,8 +36,9 @@ type Place = {
 };
 
 export default function TeamMapPage() {
-    const { "team-name": rawTeamName } = useParams();
-    const teamName = Array.isArray(rawTeamName) ? rawTeamName[0] : rawTeamName;
+    const params = useParams();
+    const teamName = params["team-name"] as string;
+    console.log("Resolved team name:", teamName);
     const mapRef = useRef<MapHandle>(null);
     const { isLoaded } = useLoadScript({
         googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
@@ -63,8 +64,11 @@ export default function TeamMapPage() {
             const tripSnapshot = await getDocs(
                 query(collection(db, "userTrips"), where("team", "==", teamName))
             );
-            const cities = tripSnapshot.docs.map((doc) => doc.data().city);
-            const uniqueCities = Array.from(new Set(cities)).filter(Boolean);
+            const cities = tripSnapshot.docs
+                .map((doc) => doc.data().city)
+                .filter((city) => typeof city === "string" && city.trim().length > 0);
+            console.log("Fetched trip cities:", cities);
+            const uniqueCities = Array.from(new Set(cities));
             setTripCities(uniqueCities.length > 0 ? uniqueCities : ["Other"]);
         });
         return () => unsub();
@@ -72,18 +76,19 @@ export default function TeamMapPage() {
 
     useEffect(() => {
         if (teamName && typeof teamName === "string") {
-          console.log("Saving selected team:", teamName);
-          localStorage.setItem("selectedTeam", teamName);
+            console.log("Saving selected team:", teamName);
+            localStorage.setItem("selectedTeam", teamName);
         } else {
-          console.log("No valid team name found in useParams");
+            console.log("No valid team name found in useParams");
         }
-      }, [teamName]);
+    }, [teamName]);
 
     useEffect(() => {
         if (!user || !teamName) return;
 
         const fetchPins = async () => {
             const q = query(collection(db, "itinerary"), where("team", "==", teamName));
+            console.log("Fetching pins for team:", teamName);
             const snapshot = await getDocs(q);
             const pins = snapshot.docs.map((doc) => {
                 const data = doc.data();
@@ -224,11 +229,11 @@ export default function TeamMapPage() {
             </Link>
 
             <a
-  href="/"
-  className="btn btn-outline fixed bottom-4 left-4 shadow"
->
-  ⬅️ Deselect Team
-</a>
+                href="/"
+                className="btn btn-outline fixed bottom-4 left-4 shadow"
+            >
+                ⬅️ Deselect Team
+            </a>
         </main>
     );
 }
