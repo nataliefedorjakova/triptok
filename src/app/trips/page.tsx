@@ -151,7 +151,7 @@ export default function TripsPage() {
                 </div>
             </div>
 
-            <div>
+            {/* <div>
                 <label className="block mb-1 font-medium">Select Saved Trip:</label>
                 <select
                     className="select select-bordered w-full mb-4"
@@ -167,7 +167,7 @@ export default function TripsPage() {
                         </option>
                     ))}
                 </select>
-            </div>
+            </div> */}
 
             {savedTrips.length > 0 && (
                 <div className="bg-base-200 p-4 rounded-lg shadow mt-6">
@@ -185,13 +185,13 @@ export default function TripsPage() {
                                         <button className="btn btn-xs btn-error" onClick={() => deleteTrip(trip.id)}>Delete</button>
                                     </div>
                                 </div>
-                                <ul className="text-sm text-gray-700 list-disc list-inside">
+                                {/* <ul className="text-sm text-gray-700 list-disc list-inside">
                                     {itineraryItems.filter((item) => item.city === trip.city).map((item) => (
                                         <li key={item.id}>
                                             {item.name} <span className="ml-1 text-xs text-gray-500">({item.tag}, {item.duration} min)</span>
                                         </li>
                                     ))}
-                                </ul>
+                                </ul> */}
                             </li>
                         ))}
                     </ul>
