@@ -97,21 +97,17 @@ export default function ItineraryPage() {
 
             const plans: DayPlan[] = plansSnapshot.docs.map((doc) => {
                 const data = doc.data();
-                const timestamp = data.createdAt;
-              
                 return {
-                  id: doc.id,
-                  itemId: data.itemId,
-                  name: data.name,
-                  duration: data.duration,
-                  tag: data.tag,
-                  city: data.city,
-                  day: data.day,
-                  createdAt: timestamp && typeof timestamp.toDate === "function"
-                    ? timestamp.toDate()
-                    : new Date(),
+                    id: doc.id,
+                    itemId: data.itemId,
+                    name: data.name,
+                    duration: data.duration,
+                    tag: data.tag,
+                    city: data.city,
+                    day: data.day,
+                    createdAt: data.createdAt?.toDate?.() ?? new Date(),
                 };
-              });
+            });
 
             setDayPlans(plans);
         };
@@ -121,22 +117,31 @@ export default function ItineraryPage() {
 
     useEffect(() => {
         if (!showPopupDay || !availableItems.length) return;
-      
+        console.log("=== Recomputing Recommendations ===");
+        console.log("Day selected:", showPopupDay);
+        console.log("All dayPlans:", dayPlans);
         const itemsForDay = dayPlans
-          .filter((p) => p.day === showPopupDay && p.createdAt instanceof Date)
-          .sort((a, b) => (b.createdAt as Date).getTime() - (a.createdAt as Date).getTime());
-      
+            .filter((p): p is DayPlan & { createdAt: Date } =>
+                p.day === showPopupDay && p.createdAt instanceof Date
+            )
+            .sort((a, b) => {
+                const timeA = a.createdAt instanceof Date ? a.createdAt.getTime() : 0;
+                const timeB = b.createdAt instanceof Date ? b.createdAt.getTime() : 0;
+                return timeB - timeA;
+            });
+        console.log("Filtered items for this day:", itemsForDay);
         const latest = itemsForDay[0];
+        console.log("Latest item added:", latest);
         const origin = availableItems.find((item) => item.id === latest?.itemId);
-      
+        console.log("Origin for recommendations:", origin);
         if (origin) {
-          setSelectedItem(origin);
-          fetchRecommendations(origin);
+            setSelectedItem(origin);
+            fetchRecommendations(origin);
         } else {
-          setSelectedItem(null);
-          setRecommendedItems([]);
+            setSelectedItem(null);
+            setRecommendedItems([]);
         }
-      }, [showPopupDay, dayPlans, availableItems]);
+    }, [showPopupDay, dayPlans, availableItems]);
 
     const fetchRecommendations = async (origin: ItineraryItem) => {
         const destinations = availableItems
@@ -176,28 +181,28 @@ export default function ItineraryPage() {
 
     const handleAssignToDay = async (item: ItineraryItem, day: number) => {
         if (!trip || !user) return;
-      
+
         const newPlan = {
-          tripId: trip.id,
-          team: trip.team,
-          day,
-          itemId: item.id,
-          name: item.name,
-          duration: item.duration,
-          tag: item.tag,
-          city: item.city,
-          userId: user.uid,
-          createdAt: new Date(),
+            tripId: trip.id,
+            team: trip.team,
+            day,
+            itemId: item.id,
+            name: item.name,
+            duration: item.duration,
+            tag: item.tag,
+            city: item.city,
+            userId: user.uid,
+            createdAt: new Date(),
         };
-      
+
         const docRef = await addDoc(collection(db, "tripItinerary"), newPlan);
         const planWithId = { ...newPlan, id: docRef.id };
         setDayPlans((prev) => [...prev, planWithId]);
-      
+
         setSelectedItem(item);
         fetchRecommendations(item);
-      
-      };
+
+    };
 
     const handleDeleteFromDay = async (id: string) => {
         await deleteDoc(doc(db, "tripItinerary", id));
@@ -258,59 +263,73 @@ export default function ItineraryPage() {
 
             {showPopupDay && (
                 <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-                    <div className="bg-base-100 rounded-xl shadow-xl p-6 w-full max-w-3xl flex gap-6">
-                        <div className="w-1/2">
-                            <h3 className="text-lg font-semibold mb-4">Add to Day {showPopupDay}</h3>
-                            <ul className="space-y-2 max-h-96 overflow-y-auto">
-                                {availableItems.map((item) => (
-                                    <li key={item.id} className="flex justify-between items-center bg-base-200 p-2 rounded">
-                                        <div>
-                                            {item.name} <span className="ml-1 text-xs text-gray-500">({item.duration} min)</span>
-                                        </div>
-                                        <button
-                                            className="btn btn-xs btn-success"
-                                            onClick={() => {
-                                                handleAssignToDay(item, showPopupDay);
-                                                setShowPopupDay(null);
-                                            }}
-                                        >
-                                            Add
-                                        </button>
-                                    </li>
-                                ))}
-                            </ul>
-                            <div className="text-center mt-4">
-                                <button className="btn btn-sm" onClick={() => setShowPopupDay(null)}>Cancel</button>
+                    <div className="bg-base-100 rounded-xl shadow-xl p-6 w-full max-w-3xl flex flex-col gap-6">
+                        <div className="flex gap-6">
+                            {/* Left side: Available items */}
+                            <div className="w-1/2">
+                                <h3 className="text-lg font-semibold mb-4">Add to Day {showPopupDay}</h3>
+                                <ul className="space-y-2 max-h-96 overflow-y-auto">
+                                    {availableItems.map((item) => (
+                                        <li key={item.id} className="flex justify-between items-center bg-base-200 p-2 rounded">
+                                            <div>
+                                                {item.name}{" "}
+                                                <span className="ml-1 text-xs text-gray-500">({item.duration} min)</span>
+                                            </div>
+                                            <button
+                                                className="btn btn-xs btn-success"
+                                                onClick={() => {
+                                                    handleAssignToDay(item, showPopupDay);
+                                                }}
+                                            >
+                                                Add
+                                            </button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+
+                            {/* Right side: Recommendations */}
+                            <div className="w-1/2">
+                                <h3 className="text-lg font-semibold mb-4">Recommended</h3>
+                                <ul className="space-y-2 max-h-96 overflow-y-auto">
+                                    {recommendedItems.map((item) => (
+                                        <li key={item.id} className="flex justify-between items-center bg-base-200 p-2 rounded">
+                                            <div>
+                                                <strong>{item.name}</strong>
+                                                <span className="ml-2 text-xs text-gray-500">
+                                                    ({item.duration} min · {item.distance?.toFixed(1)} km)
+                                                </span>
+                                            </div>
+                                            <button
+                                                className="btn btn-xs btn-success"
+                                                onClick={() => {
+                                                    handleAssignToDay(item, showPopupDay);
+                                                }}
+                                            >
+                                                Add
+                                            </button>
+                                        </li>
+                                    ))}
+                                </ul>
                             </div>
                         </div>
 
-                        <div className="w-1/2">
-                            <h3 className="text-lg font-semibold mb-4">Recommended</h3>
-                            <ul className="space-y-2 max-h-96 overflow-y-auto">
-                                {recommendedItems.map((item) => (
-                                    <li key={item.id} className="flex justify-between items-center bg-base-200 p-2 rounded">
-                                        <div>
-                                            <strong>{item.name}</strong>
-                                            <span className="ml-2 text-xs text-gray-500">
-                                                ({item.duration} min · {item.distance?.toFixed(1)} km)
-                                            </span>
-                                        </div>
-                                        <button
-                                            className="btn btn-xs btn-success"
-                                            onClick={() => {
-                                                handleAssignToDay(item, showPopupDay);
-                                                setShowPopupDay(null);
-                                            }}
-                                        >
-                                            Add
-                                        </button>
-                                    </li>
-                                ))}
-                            </ul>
+                        <div className="text-center">
+                            <button
+                                className="btn btn-sm"
+                                onClick={() => {
+                                    setShowPopupDay(null);
+                                    setSelectedItem(null);
+                                    setRecommendedItems([]);
+                                }}
+                            >
+                                Cancel
+                            </button>
                         </div>
                     </div>
                 </div>
             )}
+
 
             <div className="text-center mt-8">
                 <button onClick={() => router.back()} className="btn btn-outline">
