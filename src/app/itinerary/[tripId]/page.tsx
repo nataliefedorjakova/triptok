@@ -11,8 +11,8 @@ import {
     query,
     where,
     doc,
-    updateDoc,
     addDoc,
+    deleteDoc,
 } from "firebase/firestore";
 
 interface Trip {
@@ -29,8 +29,20 @@ interface ItineraryItem {
     duration: number;
     tag: string;
     city: string;
-    day?: number;
     team: string;
+    lat: number;
+    lng: number;
+    distance?: number;
+}
+
+interface DayPlan {
+    id: string;
+    itemId: string;
+    name: string;
+    duration: number;
+    tag: string;
+    city: string;
+    day: number;
 }
 
 export default function ItineraryPage() {
@@ -38,10 +50,11 @@ export default function ItineraryPage() {
     const router = useRouter();
     const [user, setUser] = useState<any>(null);
     const [trip, setTrip] = useState<Trip | null>(null);
-    const [items, setItems] = useState<ItineraryItem[]>([]);
-    const [showPopupDay, setShowPopupDay] = useState<number | null>(null);
-    const [selectedTag, setSelectedTag] = useState<string>("all");
     const [availableItems, setAvailableItems] = useState<ItineraryItem[]>([]);
+    const [dayPlans, setDayPlans] = useState<DayPlan[]>([]);
+    const [showPopupDay, setShowPopupDay] = useState<number | null>(null);
+    const [selectedItem, setSelectedItem] = useState<ItineraryItem | null>(null);
+    const [recommendedItems, setRecommendedItems] = useState<ItineraryItem[]>([]);
 
     useEffect(() => {
         const unsub = onAuthStateChanged(auth, setUser);
@@ -49,7 +62,7 @@ export default function ItineraryPage() {
     }, []);
 
     useEffect(() => {
-        const fetchTrip = async () => {
+        const fetchTripAndItems = async () => {
             if (!user || !tripId) return;
 
             const tripRef = doc(db, "userTrips", tripId as string);
@@ -67,47 +80,89 @@ export default function ItineraryPage() {
                 where("city", "==", tripData.city)
             );
 
-            const snapshot = await getDocs(itineraryQuery);
-            const cityItems: ItineraryItem[] = snapshot.docs.map((doc: any) => {
-                const data = doc.data();
-                return {
-                    id: doc.id,
-                    name: data.name,
-                    duration: data.duration,
-                    tag: data.tag,
-                    city: data.city,
-                    day: data.day ?? undefined,
-                    team: data.team,
-                };
-            });
+            const itinerarySnapshot = await getDocs(itineraryQuery);
+            const items: ItineraryItem[] = itinerarySnapshot.docs.map((doc) => ({
+                id: doc.id,
+                ...doc.data(),
+            } as ItineraryItem));
+            setAvailableItems(items);
 
-            setItems(cityItems);
+            const plansQuery = query(
+                collection(db, "tripItinerary"),
+                where("tripId", "==", tripSnap.id)
+            );
+            const plansSnapshot = await getDocs(plansQuery);
+            const plans: DayPlan[] = plansSnapshot.docs.map((doc) => ({
+                id: doc.id,
+                ...doc.data(),
+            } as DayPlan));
+            setDayPlans(plans);
         };
 
-        fetchTrip();
+        fetchTripAndItems();
     }, [user, tripId]);
+
+    const fetchRecommendations = async (origin: ItineraryItem) => {
+        const destinations = availableItems
+            .filter((item) => item.id !== origin.id)
+            .map((item) => ({ lat: item.lat, lng: item.lng }));
+
+        if (!destinations.length) return;
+
+        try {
+            const response = await fetch("/api/walking", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    origin: { lat: origin.lat, lng: origin.lng },
+                    destinations,
+                }),
+            });
+
+            const data = await response.json();
+            if (!data?.distances || !Array.isArray(data.distances)) {
+                console.error("Walking API returned no distances:", data);
+                return;
+            }
+
+            const distances = data.distances;
+
+            const sorted = availableItems
+                .filter((item) => item.id !== origin.id)
+                .map((item, i) => ({ ...item, distance: distances[i] }))
+                .sort((a, b) => a.distance - b.distance);
+
+            setRecommendedItems(sorted.slice(0, 5));
+        } catch (error) {
+            console.error("Failed to fetch walking distances:", error);
+        }
+    };
 
     const handleAssignToDay = async (item: ItineraryItem, day: number) => {
         if (!trip || !user) return;
 
-        const newItem = {
+        const newPlan = {
+            tripId: trip.id,
+            team: trip.team,
+            day,
+            itemId: item.id,
             name: item.name,
             duration: item.duration,
             tag: item.tag,
             city: item.city,
-            day,
             userId: user.uid,
-            team: trip.team,
             createdAt: new Date(),
         };
 
-        const docRef = await addDoc(collection(db, "itinerary"), newItem);
-        setItems((prev) => [...prev, { ...newItem, id: docRef.id }]);
+        const docRef = await addDoc(collection(db, "tripItinerary"), newPlan);
+        setDayPlans((prev) => [...prev, { ...newPlan, id: docRef.id }]);
+        setSelectedItem(item);
+        fetchRecommendations(item);
     };
 
     const handleDeleteFromDay = async (id: string) => {
-        await updateDoc(doc(db, "itinerary", id), { day: null });
-        setItems((prev) => prev.map((item) => (item.id === id ? { ...item, day: undefined } : item)));
+        await deleteDoc(doc(db, "tripItinerary", id));
+        setDayPlans((prev) => prev.filter((item) => item.id !== id));
     };
 
     const formatTime = (minutes: number) => {
@@ -115,10 +170,6 @@ export default function ItineraryPage() {
         const m = minutes % 60;
         return `${h}h ${m}min`;
     };
-
-    const uniqueTags = availableItems.length > 0
-        ? Array.from(new Set(availableItems.map((item) => item.tag)))
-        : [];
 
     return (
         <main className="max-w-3xl mx-auto p-6">
@@ -131,7 +182,7 @@ export default function ItineraryPage() {
 
             {trip && [...Array(trip.days)].map((_, index) => {
                 const day = index + 1;
-                const dayItems = items.filter((item) => item.day === day);
+                const dayItems = dayPlans.filter((item) => item.day === day);
                 const remainingTime = 14 * 60 - dayItems.reduce((sum, item) => sum + item.duration, 0);
 
                 return (
@@ -161,39 +212,61 @@ export default function ItineraryPage() {
                         >
                             ➕ Add to this day
                         </button>
+
+                        {selectedItem && recommendedItems.length > 0 && (
+                            <div className="mt-4 bg-base-200 p-4 rounded shadow">
+                                <h4 className="text-md font-semibold mb-2">Recommended after "{selectedItem.name}"</h4>
+                                <ul className="space-y-1">
+                                    {recommendedItems.map((item) => (
+                                        <li key={item.id} className="flex justify-between bg-base-100 p-2 rounded">
+                                            <span>{item.name}</span>
+                                            <span className="text-sm text-gray-500">{item.distance?.toFixed(0)} m</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
                     </div>
                 );
             })}
 
             {showPopupDay && (
                 <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-                    <div className="bg-base-100 rounded-xl shadow-xl p-6 w-full max-w-md">
-                        <h3 className="text-lg font-semibold mb-4">Add to Day {showPopupDay}</h3>
-
-                        <label className="block mb-2 text-sm font-medium">Filter by tag:</label>
-                        <select
-                            className="select select-bordered w-full mb-4"
-                            value={selectedTag}
-                            onChange={(e) => setSelectedTag(e.target.value)}
-                        >
-                            <option value="all">All</option>
-                            {Array.from(new Set(items.map((item) => item.tag))).map((tag) => (
-                                <option key={tag} value={tag}>
-                                    {tag}
-                                </option>
-                            ))}
-                        </select>
-
-                        <ul className="space-y-2 max-h-96 overflow-y-auto">
-                            {items
-                                .filter((item) => item.day === undefined)
-                                .filter((item) => selectedTag === "all" || item.tag === selectedTag)
-                                .map((item) => (
+                    <div className="bg-base-100 rounded-xl shadow-xl p-6 w-full max-w-3xl flex gap-6">
+                        <div className="w-1/2">
+                            <h3 className="text-lg font-semibold mb-4">Add to Day {showPopupDay}</h3>
+                            <ul className="space-y-2 max-h-96 overflow-y-auto">
+                                {availableItems.map((item) => (
                                     <li key={item.id} className="flex justify-between items-center bg-base-200 p-2 rounded">
                                         <div>
-                                            {item.name}{" "}
-                                            <span className="ml-1 text-xs text-gray-500">
-                                                ({item.duration} min)
+                                            {item.name} <span className="ml-1 text-xs text-gray-500">({item.duration} min)</span>
+                                        </div>
+                                        <button
+                                            className="btn btn-xs btn-success"
+                                            onClick={() => {
+                                                handleAssignToDay(item, showPopupDay);
+                                                setShowPopupDay(null);
+                                            }}
+                                        >
+                                            Add
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                            <div className="text-center mt-4">
+                                <button className="btn btn-sm" onClick={() => setShowPopupDay(null)}>Cancel</button>
+                            </div>
+                        </div>
+
+                        <div className="w-1/2">
+                            <h3 className="text-lg font-semibold mb-4">Recommended</h3>
+                            <ul className="space-y-2 max-h-96 overflow-y-auto">
+                                {recommendedItems.map((item) => (
+                                    <li key={item.id} className="flex justify-between items-center bg-base-200 p-2 rounded">
+                                        <div>
+                                            <strong>{item.name}</strong>
+                                            <span className="ml-2 text-xs text-gray-500">
+                                                ({item.duration} min · {item.distance?.toFixed(1)} km)
                                             </span>
                                         </div>
                                         <button
@@ -201,19 +274,13 @@ export default function ItineraryPage() {
                                             onClick={() => {
                                                 handleAssignToDay(item, showPopupDay);
                                                 setShowPopupDay(null);
-                                                setSelectedTag("all");
                                             }}
                                         >
                                             Add
                                         </button>
                                     </li>
                                 ))}
-                        </ul>
-
-                        <div className="text-center mt-4">
-                            <button className="btn btn-sm" onClick={() => setShowPopupDay(null)}>
-                                Cancel
-                            </button>
+                            </ul>
                         </div>
                     </div>
                 </div>
@@ -221,7 +288,7 @@ export default function ItineraryPage() {
 
             <div className="text-center mt-8">
                 <button onClick={() => router.back()} className="btn btn-outline">
-                    Back
+                    ⬅️ Back
                 </button>
             </div>
         </main>
