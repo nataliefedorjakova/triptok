@@ -1,9 +1,10 @@
 "use client";
-
+import { serverTimestamp } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
+import { FieldValue } from "firebase/firestore";
 import {
     collection,
     getDoc,
@@ -43,6 +44,7 @@ interface DayPlan {
     tag: string;
     city: string;
     day: number;
+    createdAt: Date | FieldValue;
 }
 
 export default function ItineraryPage() {
@@ -92,15 +94,57 @@ export default function ItineraryPage() {
                 where("tripId", "==", tripSnap.id)
             );
             const plansSnapshot = await getDocs(plansQuery);
-            const plans: DayPlan[] = plansSnapshot.docs.map((doc) => ({
-                id: doc.id,
-                ...doc.data(),
-            } as DayPlan));
+
+            const plans: DayPlan[] = plansSnapshot.docs.map((doc) => {
+                const data = doc.data();
+                const timestamp = data.createdAt;
+              
+                return {
+                  id: doc.id,
+                  itemId: data.itemId,
+                  name: data.name,
+                  duration: data.duration,
+                  tag: data.tag,
+                  city: data.city,
+                  day: data.day,
+                  createdAt: timestamp && typeof timestamp.toDate === "function"
+                    ? timestamp.toDate()
+                    : new Date(),
+                };
+              });
+
             setDayPlans(plans);
         };
 
         fetchTripAndItems();
     }, [user, tripId]);
+
+    useEffect(() => {
+        if (!showPopupDay || !dayPlans.length || !availableItems.length) return;
+
+        const latestItem = [...dayPlans]
+            .filter(p => p.day === showPopupDay)
+            .sort((a, b) => {
+                const aTime = a.createdAt instanceof Date ? a.createdAt.getTime() : 0;
+                const bTime = b.createdAt instanceof Date ? b.createdAt.getTime() : 0;
+                return bTime - aTime;
+              })[0];
+              if (latestItem) {
+                const origin = availableItems.find(item => item.id === latestItem.itemId);
+                if (origin) {
+                  setSelectedItem(origin);
+                  fetchRecommendations(origin);
+                }
+              } else {
+                setRecommendedItems([]); 
+              }
+
+        // const origin = availableItems.find((item) => item.id === latestItem?.itemId);
+        // if (origin) {
+        //     setSelectedItem(origin);
+        //     fetchRecommendations(origin);
+        // }
+    }, [dayPlans, availableItems, trip, showPopupDay]);
 
     const fetchRecommendations = async (origin: ItineraryItem) => {
         const destinations = availableItems
@@ -151,7 +195,7 @@ export default function ItineraryPage() {
             tag: item.tag,
             city: item.city,
             userId: user.uid,
-            createdAt: new Date(),
+            createdAt: serverTimestamp(),
         };
 
         const docRef = await addDoc(collection(db, "tripItinerary"), newPlan);
@@ -213,19 +257,6 @@ export default function ItineraryPage() {
                             ➕ Add to this day
                         </button>
 
-                        {selectedItem && recommendedItems.length > 0 && (
-                            <div className="mt-4 bg-base-200 p-4 rounded shadow">
-                                <h4 className="text-md font-semibold mb-2">Recommended after "{selectedItem.name}"</h4>
-                                <ul className="space-y-1">
-                                    {recommendedItems.map((item) => (
-                                        <li key={item.id} className="flex justify-between bg-base-100 p-2 rounded">
-                                            <span>{item.name}</span>
-                                            <span className="text-sm text-gray-500">{item.distance?.toFixed(0)} m</span>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        )}
                     </div>
                 );
             })}
@@ -288,7 +319,7 @@ export default function ItineraryPage() {
 
             <div className="text-center mt-8">
                 <button onClick={() => router.back()} className="btn btn-outline">
-                    ⬅️ Back
+                    ⬅ Back
                 </button>
             </div>
         </main>
