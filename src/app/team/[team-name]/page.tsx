@@ -232,7 +232,7 @@ export default function TeamMapPage() {
                 href="/"
                 className="btn btn-outline fixed bottom-4 left-4 shadow"
             >
-                ⬅️ Deselect Team
+                ⬅ Deselect Team
             </a>
         </main>
     );

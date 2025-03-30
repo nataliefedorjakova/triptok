@@ -47,7 +47,14 @@ const Map = forwardRef<MapHandle, {
         }}
         mapContainerStyle={{ width: "100%", height: "100%" }}
       >
-        {markers.map((place) => (
+      {markers
+        .filter((place) =>
+          typeof place.lat === "number" &&
+          typeof place.lng === "number" &&
+          !isNaN(place.lat) &&
+          !isNaN(place.lng)
+        )
+        .map((place) => (
           <Marker
             key={place.id}
             position={{ lat: place.lat, lng: place.lng }}
@@ -57,7 +64,7 @@ const Map = forwardRef<MapHandle, {
             }}
             title={`${place.name} (${place.tag})`}
           />
-        ))}
+      ))}
       </GoogleMap>
     </div>
   );

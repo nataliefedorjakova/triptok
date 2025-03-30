@@ -16,16 +16,24 @@ import { auth } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import Link from "next/link";
 
+interface Trip {
+    id: string;
+    city: string;
+    days: number;
+    startDate?: string;
+    team: string;
+  }
+
 export default function TripsPage() {
     const [user, setUser] = useState<any>(null);
     const [city, setCity] = useState("Tokyo");
     const [days, setDays] = useState(3);
     const [startDate, setStartDate] = useState("");
-    const [savedTrips, setSavedTrips] = useState<any[]>([]);
     const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
     const [itineraryItems, setItineraryItems] = useState<any[]>([]);
     const [teamName, setTeamName] = useState<string | null>(null);
     const [loadingTeamName, setLoadingTeamName] = useState(true);
+    const [savedTrips, setSavedTrips] = useState<Trip[]>([]);
 
     useEffect(() => {
         const unsub = onAuthStateChanged(auth, setUser);
@@ -50,10 +58,20 @@ export default function TripsPage() {
                 collection(db, "userTrips"),
                 where("userId", "==", user.uid),
                 where("team", "==", teamName)
-              );
+            );
             const tripSnapshot = await getDocs(tripsQuery);
-            const trips = tripSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-            setSavedTrips(trips);
+            const trips = tripSnapshot.docs.map((doc) => {
+                const data = doc.data();
+                return {
+                  id: doc.id,
+                  city: data.city,
+                  days: data.days,
+                  team: data.team,
+                  startDate: data.startDate ?? "",
+                  userId: data.userId,
+                };
+              });
+              setSavedTrips(trips);
 
             const itineraryQuery = query(collection(db, "itinerary"), where("userId", "==", user.uid));
             const itinerarySnapshot = await getDocs(itineraryQuery);
@@ -79,17 +97,27 @@ export default function TripsPage() {
             collection(db, "userTrips"),
             where("userId", "==", user.uid),
             where("team", "==", teamName)
-          );
-          const snapshot = await getDocs(q);
-          const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-          setSavedTrips(data);
+        );
+        const snapshot = await getDocs(q);
+        const trips = snapshot.docs.map((doc) => {
+            const data = doc.data();
+            return {
+              id: doc.id,
+              city: data.city,
+              days: data.days,
+              team: data.team,
+              startDate: data.startDate ?? "",
+              userId: data.userId,
+            };
+          });
+          setSavedTrips(trips);
     };
 
     const deleteTrip = async (id: string) => {
         await deleteDoc(doc(db, "userTrips", id));
         setSavedTrips(savedTrips.filter((trip) => trip.id !== id));
     };
-console.log("teamName from localStorage:", teamName);
+    console.log("teamName from localStorage:", teamName);
 
     return (
         <div className="max-w-2xl mx-auto p-4 space-y-6">
@@ -152,7 +180,10 @@ console.log("teamName from localStorage:", teamName);
                                         <strong>{trip.city}</strong> — {trip.days} day{trip.days !== 1 && "s"}<br />
                                         {trip.startDate && <span className="text-sm text-gray-500">Start: {trip.startDate}</span>}
                                     </div>
-                                    <button className="btn btn-xs btn-error self-center" onClick={() => deleteTrip(trip.id)}>Delete</button>
+                                    <div className="flex gap-2">
+                                        <Link href={`/itinerary/${trip.id}`} className="btn btn-xs btn-secondary">View Itinerary</Link>
+                                        <button className="btn btn-xs btn-error" onClick={() => deleteTrip(trip.id)}>Delete</button>
+                                    </div>
                                 </div>
                                 <ul className="text-sm text-gray-700 list-disc list-inside">
                                     {itineraryItems.filter((item) => item.city === trip.city).map((item) => (
