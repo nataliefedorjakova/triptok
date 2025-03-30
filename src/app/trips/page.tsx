@@ -151,24 +151,6 @@ export default function TripsPage() {
                 </div>
             </div>
 
-            {/* <div>
-                <label className="block mb-1 font-medium">Select Saved Trip:</label>
-                <select
-                    className="select select-bordered w-full mb-4"
-                    value={selectedTripId ?? ""}
-                    onChange={(e) => setSelectedTripId(e.target.value)}
-                >
-                    <option value="" disabled>
-                        -- Select a Trip --
-                    </option>
-                    {savedTrips.map((trip) => (
-                        <option key={trip.id} value={trip.id}>
-                            {trip.city} ({trip.days} day{trip.days !== 1 && "s"})
-                        </option>
-                    ))}
-                </select>
-            </div> */}
-
             {savedTrips.length > 0 && (
                 <div className="bg-base-200 p-4 rounded-lg shadow mt-6">
                     <h3 className="text-lg font-bold mb-2">Saved Trips</h3>
