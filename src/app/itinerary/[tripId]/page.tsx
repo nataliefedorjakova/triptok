@@ -120,31 +120,23 @@ export default function ItineraryPage() {
     }, [user, tripId]);
 
     useEffect(() => {
-        if (!showPopupDay || !dayPlans.length || !availableItems.length) return;
-
-        const latestItem = [...dayPlans]
-            .filter(p => p.day === showPopupDay)
-            .sort((a, b) => {
-                const aTime = a.createdAt instanceof Date ? a.createdAt.getTime() : 0;
-                const bTime = b.createdAt instanceof Date ? b.createdAt.getTime() : 0;
-                return bTime - aTime;
-              })[0];
-              if (latestItem) {
-                const origin = availableItems.find(item => item.id === latestItem.itemId);
-                if (origin) {
-                  setSelectedItem(origin);
-                  fetchRecommendations(origin);
-                }
-              } else {
-                setRecommendedItems([]); 
-              }
-
-        // const origin = availableItems.find((item) => item.id === latestItem?.itemId);
-        // if (origin) {
-        //     setSelectedItem(origin);
-        //     fetchRecommendations(origin);
-        // }
-    }, [dayPlans, availableItems, trip, showPopupDay]);
+        if (!showPopupDay || !availableItems.length) return;
+      
+        const itemsForDay = dayPlans
+          .filter((p) => p.day === showPopupDay && p.createdAt instanceof Date)
+          .sort((a, b) => (b.createdAt as Date).getTime() - (a.createdAt as Date).getTime());
+      
+        const latest = itemsForDay[0];
+        const origin = availableItems.find((item) => item.id === latest?.itemId);
+      
+        if (origin) {
+          setSelectedItem(origin);
+          fetchRecommendations(origin);
+        } else {
+          setSelectedItem(null);
+          setRecommendedItems([]);
+        }
+      }, [showPopupDay, dayPlans, availableItems]);
 
     const fetchRecommendations = async (origin: ItineraryItem) => {
         const destinations = availableItems
@@ -184,25 +176,28 @@ export default function ItineraryPage() {
 
     const handleAssignToDay = async (item: ItineraryItem, day: number) => {
         if (!trip || !user) return;
-
+      
         const newPlan = {
-            tripId: trip.id,
-            team: trip.team,
-            day,
-            itemId: item.id,
-            name: item.name,
-            duration: item.duration,
-            tag: item.tag,
-            city: item.city,
-            userId: user.uid,
-            createdAt: serverTimestamp(),
+          tripId: trip.id,
+          team: trip.team,
+          day,
+          itemId: item.id,
+          name: item.name,
+          duration: item.duration,
+          tag: item.tag,
+          city: item.city,
+          userId: user.uid,
+          createdAt: new Date(),
         };
-
+      
         const docRef = await addDoc(collection(db, "tripItinerary"), newPlan);
-        setDayPlans((prev) => [...prev, { ...newPlan, id: docRef.id }]);
+        const planWithId = { ...newPlan, id: docRef.id };
+        setDayPlans((prev) => [...prev, planWithId]);
+      
         setSelectedItem(item);
         fetchRecommendations(item);
-    };
+      
+      };
 
     const handleDeleteFromDay = async (id: string) => {
         await deleteDoc(doc(db, "tripItinerary", id));
