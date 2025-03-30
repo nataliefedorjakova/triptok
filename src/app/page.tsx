@@ -2,38 +2,54 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { onAuthStateChanged } from "firebase/auth";
+import { onAuthStateChanged, signOut } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import {
   collection,
   getDocs,
-  addDoc,
   query,
   where,
   doc,
   setDoc,
 } from "firebase/firestore";
+import AuthForm from "@/components/Authform";
 
 export default function HomePage() {
-  const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [teams, setTeams] = useState<string[]>([]);
   const [selectedTeam, setSelectedTeam] = useState("");
   const [newTeam, setNewTeam] = useState("");
+  const [authChecked, setAuthChecked] = useState(false);
 
+  const router = useRouter();
+
+  // Auth listener (initial)
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (u) => {
-      if (u) {
-        setUser(u);
-
-        const q = query(collection(db, "teams"), where("members", "array-contains", u.uid));
-        const snapshot = await getDocs(q);
-        const teamList = snapshot.docs.map((doc) => doc.id);
-        setTeams(teamList);
-      }
+    const unsub = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      setAuthChecked(true);
     });
-    return () => unsubscribe();
+    return () => unsub();
   }, []);
+
+  // Redirect if not logged in
+  useEffect(() => {
+    if (authChecked && !user) {
+      router.push("/signin");
+    }
+  }, [authChecked, user, router]);
+
+  // Fetch teams if logged in
+  useEffect(() => {
+    if (!user) return;
+    const fetchTeams = async () => {
+      const q = query(collection(db, "teams"), where("members", "array-contains", user.uid));
+      const snapshot = await getDocs(q);
+      const teamList = snapshot.docs.map((doc) => doc.id);
+      setTeams(teamList);
+    };
+    fetchTeams();
+  }, [user]);
 
   const handleTeamSelect = async () => {
     const teamToUse = selectedTeam !== "new" ? selectedTeam : newTeam.trim();
@@ -47,12 +63,14 @@ export default function HomePage() {
         createdAt: new Date().toISOString(),
       });
     }
+
     localStorage.setItem("selectedTeam", teamToUse);
-    
     router.push(`/team/${encodeURIComponent(teamToUse)}`);
   };
 
-  if (!user) return <p className="p-4">Loading...</p>;
+  if (!authChecked) {
+    return <p className="text-center p-6">Loading...</p>;
+  }
 
   return (
     <main className="max-w-xl mx-auto p-6 space-y-6">
@@ -66,7 +84,9 @@ export default function HomePage() {
         >
           <option value="">-- Select Existing Team --</option>
           {teams.map((team) => (
-            <option key={team} value={team}>{team}</option>
+            <option key={team} value={team}>
+              {team}
+            </option>
           ))}
           <option value="new">➕ Create New Team</option>
         </select>
@@ -86,6 +106,19 @@ export default function HomePage() {
           disabled={!selectedTeam || (selectedTeam === "new" && !newTeam.trim())}
         >
           Continue
+        </button>
+      </div>
+
+      <div className="text-center mt-8">
+        <button
+          onClick={async () => {
+            await signOut(auth);
+            setUser(null);
+            router.push("/signin");
+          }}
+          className="btn btn-outline"
+        >
+          Sign Out
         </button>
       </div>
     </main>

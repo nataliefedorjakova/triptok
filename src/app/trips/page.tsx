@@ -92,7 +92,6 @@ export default function TripsPage() {
             userId: user.uid,
             createdAt: serverTimestamp(),
         });
-        alert("Trip saved!");
         const q = query(
             collection(db, "userTrips"),
             where("userId", "==", user.uid),
