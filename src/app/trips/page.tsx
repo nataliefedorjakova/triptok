@@ -22,7 +22,7 @@ interface Trip {
     days: number;
     startDate?: string;
     team: string;
-  }
+}
 
 export default function TripsPage() {
     const [user, setUser] = useState<any>(null);
@@ -56,24 +56,27 @@ export default function TripsPage() {
 
             const tripsQuery = query(
                 collection(db, "userTrips"),
-                where("userId", "==", user.uid),
                 where("team", "==", teamName)
             );
+
             const tripSnapshot = await getDocs(tripsQuery);
             const trips = tripSnapshot.docs.map((doc) => {
                 const data = doc.data();
                 return {
-                  id: doc.id,
-                  city: data.city,
-                  days: data.days,
-                  team: data.team,
-                  startDate: data.startDate ?? "",
-                  userId: data.userId,
+                    id: doc.id,
+                    city: data.city,
+                    days: data.days,
+                    team: data.team,
+                    startDate: data.startDate ?? "",
+                    userId: data.userId,
                 };
-              });
-              setSavedTrips(trips);
+            });
+            setSavedTrips(trips);
 
-            const itineraryQuery = query(collection(db, "itinerary"), where("userId", "==", user.uid));
+            const itineraryQuery = query(
+                collection(db, "itinerary"),
+                where("team", "==", teamName)
+            );
             const itinerarySnapshot = await getDocs(itineraryQuery);
             const items = itinerarySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
             setItineraryItems(items);
@@ -94,22 +97,21 @@ export default function TripsPage() {
         });
         const q = query(
             collection(db, "userTrips"),
-            where("userId", "==", user.uid),
             where("team", "==", teamName)
         );
         const snapshot = await getDocs(q);
         const trips = snapshot.docs.map((doc) => {
             const data = doc.data();
             return {
-              id: doc.id,
-              city: data.city,
-              days: data.days,
-              team: data.team,
-              startDate: data.startDate ?? "",
-              userId: data.userId,
+                id: doc.id,
+                city: data.city,
+                days: data.days,
+                team: data.team,
+                startDate: data.startDate ?? "",
+                userId: data.userId,
             };
-          });
-          setSavedTrips(trips);
+        });
+        setSavedTrips(trips);
     };
 
     const deleteTrip = async (id: string) => {
