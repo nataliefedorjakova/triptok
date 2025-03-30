@@ -14,7 +14,7 @@ export async function POST(req: Request) {
         origins,
         destinations: dests,
         mode: "walking",
-        key: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
+        key: process.env.GOOGLE_MAPS_API_KEY,
       },
     });
 

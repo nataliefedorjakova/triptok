@@ -15,3 +15,5 @@ env:
     value: "1:191166330238:web:a90b0abf1d81814825af2f"
   - variable: NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
     value: "AIzaSyCd3FX-dj2cijkv2BAvnG-vtbWczYo025M"
+  - variable: GOOGLE_MAPS_API_KEY
+    value: "AIzaSyCd3FX-dj2cijkv2BAvnG-vtbWczYo025M"

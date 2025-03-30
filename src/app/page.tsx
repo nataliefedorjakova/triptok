@@ -23,7 +23,6 @@ export default function HomePage() {
 
   const router = useRouter();
 
-  // Auth listener (initial)
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
       setUser(u);
@@ -39,11 +38,12 @@ export default function HomePage() {
     }
   }, [authChecked, user, router]);
 
-  // Fetch teams if logged in
   useEffect(() => {
     if (!user) return;
     const fetchTeams = async () => {
-      const q = query(collection(db, "teams"), where("members", "array-contains", user.uid));
+      // TODO: for future reference: adding members to teams; for now, everyone sees every team
+      // const q = query(collection(db, "teams"), where("members", "array-contains", user.uid));
+      const q = query(collection(db, "teams"));
       const snapshot = await getDocs(q);
       const teamList = snapshot.docs.map((doc) => doc.id);
       setTeams(teamList);
