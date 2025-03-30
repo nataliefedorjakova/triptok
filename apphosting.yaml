@@ -1,0 +1,15 @@
+runtime: nodejs20
+
+env:
+  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+    value: "AIzaSyCd3FX-dj2cijkv2BAvnG-vtbWczYo025M"
+  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    value: "travel-planner-a8e85.firebaseapp.com"
+  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    value: "travel-planner-a8e85"
+  - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    value: "travel-planner-a8e85.firebasestorage.app"
+  - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+    value: "191166330238"
+  - variable: NEXT_PUBLIC_FIREBASE_APP_ID
+    value: "1:191166330238:web:a90b0abf1d81814825af2f"
