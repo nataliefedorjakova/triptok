@@ -166,13 +166,6 @@ export default function TripsPage() {
                                         <button className="btn btn-xs btn-error" onClick={() => deleteTrip(trip.id)}>Delete</button>
                                     </div>
                                 </div>
-                                {/* <ul className="text-sm text-gray-700 list-disc list-inside">
-                                    {itineraryItems.filter((item) => item.city === trip.city).map((item) => (
-                                        <li key={item.id}>
-                                            {item.name} <span className="ml-1 text-xs text-gray-500">({item.tag}, {item.duration} min)</span>
-                                        </li>
-                                    ))}
-                                </ul> */}
                             </li>
                         ))}
                     </ul>

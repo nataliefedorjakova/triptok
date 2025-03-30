@@ -64,7 +64,7 @@ const Map = forwardRef<MapHandle, {
             key={place.id}
             position={{ lat: place.lat, lng: place.lng }}
             label={{
-              text: tagEmojiMap[place.tag] || "📍",
+              text: tagEmojiMap[place.tag] || "📍", // TODO: add pins with tags
               fontSize: "24px",
             }}
             title={`${place.name} (${place.tag})`}

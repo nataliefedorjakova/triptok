@@ -209,7 +209,7 @@ export default function TeamMapPage() {
                                         ({item.duration} min)
                                     </span>
                                     {item.city && (
-                                        <div className="text-sm text-gray-400">{item.city}</div> // TODO: add pins with tags
+                                        <div className="text-sm text-gray-400">{item.city}</div> 
                                     )}
                                 </div>
                                 <button
