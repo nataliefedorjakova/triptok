@@ -45,6 +45,11 @@ const Map = forwardRef<MapHandle, {
         onLoad={(map) => {
           mapRef.current = map;
         }}
+        options={{
+          mapId: "3d8113aaf2627f85", 
+          disableDefaultUI: false,
+          zoomControl: true,
+        }}
         mapContainerStyle={{ width: "100%", height: "100%" }}
       >
       {markers

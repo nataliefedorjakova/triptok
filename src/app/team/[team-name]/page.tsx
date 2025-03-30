@@ -194,7 +194,13 @@ export default function TeamMapPage() {
                             <li
                                 key={item.id}
                                 className="flex items-center justify-between bg-base-100 p-2 rounded shadow cursor-pointer hover:bg-base-300"
-                                onClick={() => mapRef.current?.flyTo(item.lat, item.lng)}
+                                onClick={() => {
+                                    if (typeof item.lat === "number" && typeof item.lng === "number") {
+                                      mapRef.current?.flyTo(item.lat, item.lng);
+                                    } else {
+                                      console.warn("Invalid coordinates for item", item);
+                                    }
+                                  }}
                             >
                                 <div>
                                     <strong>{item.name}</strong>
@@ -203,7 +209,7 @@ export default function TeamMapPage() {
                                         ({item.duration} min)
                                     </span>
                                     {item.city && (
-                                        <div className="text-sm text-gray-400">📍 {item.city}</div>
+                                        <div className="text-sm text-gray-400">{item.city}</div> // TODO: add pins with tags
                                     )}
                                 </div>
                                 <button
